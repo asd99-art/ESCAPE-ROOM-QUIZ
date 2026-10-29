@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escape Room: Data Edition</title>
+
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════
+       GLOBAL TOP BAR (Nav, Auth, Sound, Theme)
+  ════════════════════════════════════════════ -->
+  <div class="global-topbar">
+    <div class="topbar-left">
+      <a href="/analytics.html" class="nav-pill-link">📊 Analytics</a>
+    </div>
+    <div class="topbar-right">
+      <div id="auth-nav-area" class="auth-nav-area">
+        <!-- Rendered by app.js: "Sign In / Sign Up" or "👤 User | Sign Out" -->
+      </div>
+      <button id="btn-sound-toggle" class="icon-toggle-btn" title="Toggle Sound" aria-label="Toggle sound">
+        <span id="sound-icon">🔊</span>
+      </button>
+      <button id="btn-theme-toggle" class="icon-toggle-btn" title="Toggle Light/Dark Mode" aria-label="Toggle theme">
+        <span id="theme-icon">🌙</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SCREEN 1 — HOME
+  ════════════════════════════════════════════ -->
+  <div id="screen-home" class="screen active">
+    <header class="home-header">
+      <div class="lock-icon">🔐</div>
+      <h1>Escape Room<span class="accent">: Data Edition</span></h1>
+      <p class="intro">
+        You're trapped in the data labyrinth. Choose a room, answer 5 adaptive questions,
+        and escape before your lives run out.
+      </p>
+    </header>
+
+    <!-- Room cards injected by app.js -->
+    <div id="room-grid" class="room-grid"></div>
+
+    <!-- Leaderboard Section -->
+    <section class="home-leaderboard-section">
+      <div class="leaderboard-header">
+        <div class="lb-title-wrap">
+          <span class="lb-icon">🏆</span>
+          <h3>Room Leaderboards</h3>
+        </div>
+        <p class="lb-sub">Top 10 escapists per chamber</p>
+      </div>
+
+      <!-- Leaderboard Tabs -->
+      <div class="lb-tabs" role="tablist">
+        <button class="lb-tab-btn active" data-room="algorithm-vault">⚙️ Algorithm Vault</button>
+        <button class="lb-tab-btn" data-room="statistics-lab">📊 Statistics Lab</button>
+        <button class="lb-tab-btn" data-room="database-dungeon">🗄️ Database Dungeon</button>
+      </div>
+
+      <!-- Leaderboard Content -->
+      <div id="lb-content" class="lb-content">
+        <div id="lb-loading" class="lb-status">Loading leaderboard records...</div>
+        <div id="lb-error" class="lb-status hidden"></div>
+        <table id="lb-table" class="lb-table hidden">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Score</th>
+              <th>Points</th>
+            </tr>
+          </thead>
+          <tbody id="lb-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="home-footer">
+      <span id="overall-progress"></span>
+      <div class="footer-links">
+        <a href="/analytics.html" class="footer-link">📊 View Question Analytics</a>
+        <span class="footer-dot">•</span>
+        <a id="skip-unlock-link" href="#" class="skip-link">Skip unlock (for testing)</a>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SCREEN: ROOM INTRO (Full-screen narrative card)
+  ════════════════════════════════════════════ -->
+  <div id="screen-intro" class="screen">
+    <div class="room-intro-modal">
+      <div id="intro-room-icon" class="intro-icon">⚙️</div>
+      <h2 id="intro-room-title" class="intro-title">The Algorithm Vault</h2>
+      <div class="intro-story-box">
+        <p id="intro-story-text" class="intro-story-text">
+          Heavy iron gears click behind stone walls. The labyrinth senses your presence and adapts its defenses to your skill.
+        </p>
+      </div>
+      <div class="intro-rules-hint">
+        <span>⚡ 5 questions will be served adaptively</span>
+        <span>🔥 Hard questions reward double points</span>
+        <span>❤️ 3 lives to survive</span>
+      </div>
+      <button id="btn-enter-room" class="btn btn-primary btn-large">Enter Room →</button>
+      <button id="btn-intro-cancel" class="btn btn-ghost" style="margin-top:0.5rem;">← Choose Another Room</button>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SCREEN 2 — QUIZ
+  ════════════════════════════════════════════ -->
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-wrapper">
+      <div class="quiz-container">
+
+        <!-- Top bar: nav + room name + live stats -->
+        <div class="quiz-topbar">
+          <button id="btn-back-home" class="btn btn-ghost">← Home</button>
+          <span id="quiz-room-title" class="quiz-room-label"></span>
+          <div class="quiz-live-stats">
+            <span id="lives-display" class="lives-display" aria-label="Lives"></span>
+            <span id="streak-badge" class="streak-badge hidden"></span>
+            <span id="session-points" class="session-points">0 pts</span>
+          </div>
+        </div>
+
+        <!-- Question progress label + fill bar -->
+        <div class="progress-row">
+          <span id="quiz-progress" class="quiz-progress-label">Question 1 of 5</span>
+          <div class="badges-row">
+            <span id="question-level-badge" class="level-badge easy">Easy (1× pts)</span>
+            <span id="question-topic-badge" class="topic-badge">Topic</span>
+          </div>
+        </div>
+        <div class="progress-bar-track">
+          <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+
+        <!-- Timer bar (counts DOWN) -->
+        <div class="timer-bar-track" aria-label="Time remaining">
+          <div id="timer-bar-fill" class="timer-bar-fill"></div>
+        </div>
+
+        <!-- Question card -->
+        <div id="question-card" class="question-card">
+          <p id="question-text" class="question-text"></p>
+
+          <!-- Hint button row -->
+          <div class="hint-row">
+            <button id="btn-hint" class="btn btn-hint">
+              💡 Hint <span class="hint-cost-tag">–5 pts</span>
+            </button>
+          </div>
+
+          <!-- Answer options (injected by JS) -->
+          <ul id="options-list" class="options-list"></ul>
+
+          <!-- Feedback shown after answering -->
+          <div id="feedback-panel" class="feedback-panel hidden">
+            <div class="feedback-top">
+              <span id="feedback-icon" class="feedback-icon"></span>
+              <span id="feedback-message" class="feedback-message"></span>
+              <span id="points-earned" class="points-earned"></span>
+            </div>
+            <p id="explanation-text" class="explanation-text"></p>
+            <button id="btn-next" class="btn btn-primary btn-next">Next →</button>
+          </div>
+        </div><!-- /question-card -->
+
+      </div><!-- /quiz-container -->
+    </div><!-- /quiz-wrapper -->
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SCREEN 3 — ROOM RESULT
+  ════════════════════════════════════════════ -->
+  <div id="screen-result" class="screen">
+    <div class="result-container">
+
+      <!-- Two-line narrative story -->
+      <div id="story-panel" class="story-panel"></div>
+
+      <div id="result-trophy" class="result-trophy"></div>
+      <h2 id="result-room-name" class="result-room-name"></h2>
+
+      <!-- Three-stat grid -->
+      <div class="result-stats-grid">
+        <div class="result-stat">
+          <div class="stat-label">Correct</div>
+          <div class="stat-row">
+            <span id="result-correct" class="stat-value"></span>
+            <span id="result-total"   class="stat-denom"></span>
+          </div>
+        </div>
+        <div class="result-stat">
+          <div class="stat-label">Points</div>
+          <div class="stat-row">
+            <span id="result-points" class="stat-value accent"></span>
+            <span class="stat-denom"> pts</span>
+          </div>
+        </div>
+        <div class="result-stat">
+          <div class="stat-label">Lives Left</div>
+          <div id="result-lives" class="stat-value lives-display"></div>
+        </div>
+      </div>
+
+      <p id="result-verdict" class="result-verdict"></p>
+
+      <div class="result-actions">
+        <button id="btn-go-home"   class="btn btn-secondary">🏠 Home</button>
+        <button id="btn-replay"    class="btn btn-primary">🔄 Replay</button>
+        <button id="btn-next-room" class="btn btn-success hidden">Next Room →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SCREEN 4 — FINAL (all rooms done)
+  ════════════════════════════════════════════ -->
+  <div id="screen-final" class="screen">
+    <div class="final-container">
+      <div id="final-icon"    class="final-icon"></div>
+      <h2 id="final-title"   class="final-title"></h2>
+      <p  id="final-message" class="final-message"></p>
+
+      <div class="final-total-box">
+        <span id="final-total-pts" class="final-total-num"></span>
+        <span class="final-total-label"> total points</span>
+      </div>
+
+      <!-- Per-room breakdown injected by JS -->
+      <div id="final-breakdown" class="final-breakdown"></div>
+
+      <!-- ── TOPIC PROFILE SECTION (Browser-only) ── -->
+      <section class="topic-profile-section">
+        <div class="topic-profile-header">
+          <h3>🧠 Your Topic Profile</h3>
+          <p class="topic-profile-sub">Calculated from your session's answers</p>
+        </div>
+        <div class="strong-weak-grid">
+          <div class="profile-highlight-box strong">
+            <span class="highlight-label">Strongest Topic</span>
+            <span id="strongest-topic" class="highlight-val">—</span>
+          </div>
+          <div class="profile-highlight-box weak">
+            <span class="highlight-label">Needs Practice</span>
+            <span id="weakest-topic" class="highlight-val">—</span>
+          </div>
+        </div>
+        <div id="topic-bars-list" class="topic-bars-list">
+          <!-- Bars injected by app.js -->
+        </div>
+      </section>
+
+      <!-- ── SHAREABLE RESULT CARD (Canvas 1200x630) ── -->
+      <section class="share-card-section">
+        <div class="share-card-header">
+          <h3>🖼️ Shareable Escape Card</h3>
+          <p class="share-card-sub">Export your achievement card (1200×630 HD)</p>
+        </div>
+
+        <div class="canvas-preview-container">
+          <canvas id="share-canvas" width="1200" height="630"></canvas>
+        </div>
+
+        <div class="share-card-actions">
+          <button id="btn-download-card" class="btn btn-primary">📥 Download Card (PNG)</button>
+          <button id="btn-copy-card-text" class="btn btn-secondary">📋 Copy One-Line Summary</button>
+        </div>
+        <p id="share-copy-confirm" class="copy-confirm hidden">✅ Summary copied to clipboard!</p>
+      </section>
+
+      <div class="final-actions" style="margin-top:1.5rem;">
+        <button id="btn-play-again" class="btn btn-primary btn-large">🔄 Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data & Logic -->
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

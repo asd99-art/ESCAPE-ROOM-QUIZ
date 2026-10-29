@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up — Escape Room: Data Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <a href="/" class="auth-back-link">← Return to Escape Room</a>
+        <div class="auth-icon">🚀</div>
+        <h2>Create Account</h2>
+        <p class="auth-subtitle">Save your name and climb the room leaderboards.</p>
+      </div>
+
+      <form id="signup-form" class="auth-form">
+        <div id="auth-error" class="auth-error hidden"></div>
+
+        <div class="form-group">
+          <label for="username">Username (at least 3 characters)</label>
+          <input type="text" id="username" name="username" class="form-input" required autocomplete="username" placeholder="Choose a username" minlength="3" maxlength="30" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password (at least 4 characters)</label>
+          <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password" placeholder="Choose a secure password" minlength="4" />
+        </div>
+
+        <button type="submit" id="btn-submit" class="btn btn-primary btn-block">Sign Up</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="/login.html" class="auth-link">Sign In</a></p>
+        <p class="auth-anon-hint"><a href="/" class="auth-link-subtle">Or continue anonymously →</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('signup-form');
+    const errorBox = document.getElementById('auth-error');
+    const submitBtn = document.getElementById('btn-submit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBox.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.href = '/';
+        } else {
+          errorBox.textContent = data.error || 'Failed to sign up.';
+          errorBox.classList.remove('hidden');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign Up';
+        }
+      } catch (err) {
+        errorBox.textContent = 'Network or server error. Please try again.';
+        errorBox.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign Up';
+      }
+    });
+  </script>
+</body>
+</html>

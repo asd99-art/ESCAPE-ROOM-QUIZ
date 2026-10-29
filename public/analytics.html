@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics — Escape Room: Data Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="analytics-page">
+
+  <!-- Header Navigation -->
+  <header class="analytics-nav">
+    <div class="nav-brand">
+      <span class="brand-icon">📊</span>
+      <span class="brand-title">Escape Room: Analytics Hub</span>
+    </div>
+    <div class="nav-actions">
+      <a href="/" class="btn btn-secondary">🏠 Back to Game</a>
+      <button id="btn-theme-toggle" class="btn btn-ghost" title="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <main class="analytics-main">
+    <div class="analytics-container">
+
+      <!-- Summary Stat Cards -->
+      <section class="stats-summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Total Answers Recorded</div>
+          <div id="stat-total-answers" class="summary-value">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Unique Questions Tracked</div>
+          <div id="stat-unique-questions" class="summary-value">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Average Success Rate</div>
+          <div id="stat-overall-success" class="summary-value">0%</div>
+        </div>
+      </section>
+
+      <!-- Chart Section -->
+      <section class="chart-section">
+        <div class="section-header">
+          <h3>Accuracy per Question (% Correct)</h3>
+          <span class="section-sub">Hardest questions shown first</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="accuracyChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Table Section -->
+      <section class="table-section">
+        <div class="section-header">
+          <h3>Question Performance Breakdown</h3>
+          <span class="section-sub">Sorted by difficulty (lowest accuracy first)</span>
+        </div>
+
+        <div id="table-loading" class="table-status">Loading analytics from MongoDB...</div>
+        <div id="table-error" class="table-status error hidden">Unable to load data from database.</div>
+
+        <div class="table-responsive">
+          <table id="stats-table" class="stats-table hidden">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Room</th>
+                <th>Question</th>
+                <th>Attempts</th>
+                <th>Correct</th>
+                <th>Accuracy</th>
+                <th>Avg Time</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    // Theme toggle
+    const themeBtn = document.getElementById('btn-theme-toggle');
+    let currentTheme = 'dark';
+    themeBtn.addEventListener('click', () => {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      themeBtn.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+      if (window.myChart) {
+        window.myChart.options.scales.x.ticks.color = currentTheme === 'dark' ? '#8b949e' : '#57606a';
+        window.myChart.options.scales.y.ticks.color = currentTheme === 'dark' ? '#8b949e' : '#57606a';
+        window.myChart.options.scales.x.grid.color  = currentTheme === 'dark' ? '#30363d' : '#d0d7de';
+        window.myChart.options.scales.y.grid.color  = currentTheme === 'dark' ? '#30363d' : '#d0d7de';
+        window.myChart.update();
+      }
+    });
+
+    const roomNames = {
+      'algorithm-vault':  'Algorithm Vault',
+      'statistics-lab':   'Statistics Lab',
+      'database-dungeon': 'Database Dungeon'
+    };
+
+    async function loadStats() {
+      const loadingEl = document.getElementById('table-loading');
+      const errorEl   = document.getElementById('table-error');
+      const tableEl   = document.getElementById('stats-table');
+      const tbody     = document.getElementById('stats-table-body');
+
+      try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('API returned ' + res.status);
+        const data = await res.json();
+
+        const totalAnswers = data.totalAnswers || 0;
+        let perQuestion = data.perQuestion || [];
+
+        // Sort hardest questions first (lowest percentCorrect first)
+        perQuestion.sort((a, b) => a.percentCorrect - b.percentCorrect);
+
+        // Update summary cards
+        document.getElementById('stat-total-answers').textContent = totalAnswers;
+        document.getElementById('stat-unique-questions').textContent = perQuestion.length;
+
+        if (perQuestion.length > 0) {
+          const totalAttempts = perQuestion.reduce((sum, q) => sum + (q.totalAttempts || 0), 0);
+          const totalCorrect  = perQuestion.reduce((sum, q) => sum + (q.correctAttempts || 0), 0);
+          const avgAcc = totalAttempts > 0 ? ((totalCorrect / totalAttempts) * 100).toFixed(1) : 0;
+          document.getElementById('stat-overall-success').textContent = avgAcc + '%';
+        } else {
+          document.getElementById('stat-overall-success').textContent = 'N/A';
+        }
+
+        loadingEl.classList.add('hidden');
+
+        if (perQuestion.length === 0) {
+          loadingEl.textContent = 'No answer data logged yet. Play through a room to generate stats!';
+          loadingEl.classList.remove('hidden');
+          return;
+        }
+
+        // Populate table
+        tbody.innerHTML = '';
+        perQuestion.forEach((q, idx) => {
+          const row = document.createElement('tr');
+          const cleanRoom = roomNames[q.room] || q.room || 'General';
+          const accClass = q.percentCorrect < 50 ? 'acc-low' : q.percentCorrect < 75 ? 'acc-med' : 'acc-high';
+
+          row.innerHTML = `
+            <td>#${idx + 1}</td>
+            <td><span class="room-pill ${q.room}">${cleanRoom}</span></td>
+            <td class="table-q-text">${escapeHtml(q.questionText)}</td>
+            <td>${q.totalAttempts}</td>
+            <td>${q.correctAttempts}</td>
+            <td><span class="acc-badge ${accClass}">${q.percentCorrect}%</span></td>
+            <td>${(q.avgTimeTakenMs / 1000).toFixed(1)}s</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        tableEl.classList.remove('hidden');
+
+        // Render Chart.js
+        renderChart(perQuestion);
+
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+        loadingEl.classList.add('hidden');
+        errorEl.textContent = 'Unable to reach the database stats API. Play in offline mode or check MongoDB connection.';
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    }
+
+    function renderChart(questions) {
+      const ctx = document.getElementById('accuracyChart').getContext('2d');
+
+      // Shorten label for chart axis
+      const labels = questions.map((q, i) => {
+        const text = q.questionText.length > 28 ? q.questionText.slice(0, 28) + '…' : q.questionText;
+        return `#${i + 1} ${text}`;
+      });
+
+      const data = questions.map(q => q.percentCorrect);
+      const bgColors = questions.map(q => {
+        if (q.percentCorrect < 50) return 'rgba(248, 81, 73, 0.7)';
+        if (q.percentCorrect < 75) return 'rgba(227, 179, 65, 0.7)';
+        return 'rgba(63, 185, 80, 0.7)';
+      });
+
+      window.myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Accuracy (%)',
+            data: data,
+            backgroundColor: bgColors,
+            borderColor: bgColors.map(c => c.replace('0.7', '1')),
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `Accuracy: ${context.raw}%`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                color: '#8b949e',
+                callback: function(v) { return v + '%'; }
+              },
+              grid: { color: '#30363d' }
+            },
+            x: {
+              ticks: {
+                color: '#8b949e',
+                maxRotation: 45,
+                minRotation: 25,
+                autoSkip: false
+              },
+              grid: { color: '#30363d' }
+            }
+          }
+        }
+      });
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>
